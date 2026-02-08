@@ -4,10 +4,10 @@ Génère un graphe visuel du réseau MPM avec NetworkX et Matplotlib
 """
 
 import matplotlib
-matplotlib.use('Agg')  # Backend non-interactif pour Flask
-import networkx as nx
+matplotlib.use("Agg")  # Backend non-interactif pour Flask - DOIT être avant tout import matplotlib.pyplot
 import matplotlib.pyplot as plt
 import matplotlib.patches as mpatches
+import networkx as nx
 import os
 from datetime import datetime
 

@@ -4,7 +4,9 @@ Génère un PDF avec le graphe, le tableau récapitulatif et les informations du
 """
 
 import matplotlib
-matplotlib.use('Agg')  # Backend non-interactif pour Flask
+matplotlib.use("Agg")  # Backend non-interactif pour Flask - DOIT être avant tout import matplotlib.pyplot
+import matplotlib.pyplot as plt
+import matplotlib.patches as mpatches
 from reportlab.lib import colors
 from reportlab.lib.pagesizes import A4, landscape
 from reportlab.lib.units import cm
@@ -13,8 +15,6 @@ from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
 from reportlab.lib.enums import TA_CENTER, TA_LEFT
 import os
 from datetime import datetime
-import matplotlib.pyplot as plt
-import matplotlib.patches as mpatches
 import networkx as nx
 from io import BytesIO
 
