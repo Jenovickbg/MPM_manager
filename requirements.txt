@@ -1,0 +1,5 @@
+Flask==3.0.0
+networkx==3.2.1
+matplotlib==3.8.2
+reportlab==4.0.7
+Werkzeug==3.0.1

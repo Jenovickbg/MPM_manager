@@ -1,0 +1,206 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>À propos - Réseau MPM</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body>
+    <!-- Navigation -->
+    <nav class="navbar navbar-expand-lg navbar-dark bg-primary">
+        <div class="container">
+            <a class="navbar-brand" href="{{ url_for('index') }}">
+                <strong>MPM</strong> - Méthode des Potentiels Métra
+            </a>
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="navbarNav">
+                <ul class="navbar-nav ms-auto">
+                    <li class="nav-item">
+                        <a class="nav-link" href="{{ url_for('index') }}">Accueil</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="{{ url_for('application') }}">Application</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link active" href="{{ url_for('about') }}">À propos</a>
+                    </li>
+                </ul>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Main Content -->
+    <div class="container my-5">
+        <div class="row">
+            <div class="col-lg-8 mx-auto">
+                <h1 class="text-center mb-4">À propos du Projet</h1>
+
+                <!-- Description du projet -->
+                <div class="card shadow-sm mb-4">
+                    <div class="card-header bg-primary text-white">
+                        <h5 class="mb-0"><i class="bi bi-info-circle"></i> Description du Projet</h5>
+                    </div>
+                    <div class="card-body">
+                        <p class="lead">
+                            Cette application web a été développée dans le cadre du cours de 
+                            <strong>Recherche Opérationnelle</strong> pour faciliter la compréhension 
+                            et l'application de la Méthode des Potentiels Métra (MPM).
+                        </p>
+                        <p>
+                            La Méthode des Potentiels Métra est une technique de planification et 
+                            d'ordonnancement de projets qui permet de déterminer les dates de début 
+                            et de fin au plus tôt et au plus tard pour chaque tâche, d'identifier 
+                            les marges et de mettre en évidence le chemin critique du projet.
+                        </p>
+                        <p>
+                            Cette application permet aux utilisateurs de saisir leurs tâches, leurs 
+                            durées et leurs relations d'antériorité, puis génère automatiquement 
+                            le réseau MPM complet avec tous les calculs nécessaires et une 
+                            visualisation graphique claire.
+                        </p>
+                    </div>
+                </div>
+
+                <!-- Objectifs pédagogiques -->
+                <div class="card shadow-sm mb-4">
+                    <div class="card-header bg-success text-white">
+                        <h5 class="mb-0"><i class="bi bi-book"></i> Objectifs Pédagogiques</h5>
+                    </div>
+                    <div class="card-body">
+                        <ul class="list-unstyled">
+                            <li class="mb-2">
+                                <i class="bi bi-check-circle text-success"></i> 
+                                Comprendre la construction d'un réseau MPM
+                            </li>
+                            <li class="mb-2">
+                                <i class="bi bi-check-circle text-success"></i> 
+                                Maîtriser le calcul des dates au plus tôt (DPT) et au plus tard (DPL)
+                            </li>
+                            <li class="mb-2">
+                                <i class="bi bi-check-circle text-success"></i> 
+                                Identifier le chemin critique et comprendre son importance
+                            </li>
+                            <li class="mb-2">
+                                <i class="bi bi-check-circle text-success"></i> 
+                                Visualiser graphiquement un réseau de tâches
+                            </li>
+                            <li class="mb-2">
+                                <i class="bi bi-check-circle text-success"></i> 
+                                Appliquer les concepts théoriques à des cas pratiques
+                            </li>
+                        </ul>
+                    </div>
+                </div>
+
+                <!-- Technologies utilisées -->
+                <div class="card shadow-sm mb-4">
+                    <div class="card-header bg-info text-white">
+                        <h5 class="mb-0"><i class="bi bi-code-slash"></i> Technologies Utilisées</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="row">
+                            <div class="col-md-6">
+                                <h6>Backend</h6>
+                                <ul>
+                                    <li>Python 3</li>
+                                    <li>Flask (Framework web)</li>
+                                    <li>NetworkX (Graphes)</li>
+                                    <li>Matplotlib (Visualisation)</li>
+                                    <li>ReportLab (Génération PDF)</li>
+                                </ul>
+                            </div>
+                            <div class="col-md-6">
+                                <h6>Frontend</h6>
+                                <ul>
+                                    <li>HTML5 / CSS3</li>
+                                    <li>Bootstrap 5</li>
+                                    <li>JavaScript (ES6+)</li>
+                                    <li>Bootstrap Icons</li>
+                                </ul>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Équipe du projet -->
+                <div class="card shadow-sm mb-4">
+                    <div class="card-header bg-warning text-dark">
+                        <h5 class="mb-0"><i class="bi bi-people"></i> Équipe du Projet</h5>
+                    </div>
+                    <div class="card-body">
+                        <p class="text-muted mb-3">
+                            Ce projet a été réalisé par l'équipe suivante dans le cadre du cours 
+                            de Recherche Opérationnelle :
+                        </p>
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <div class="team-member">
+                                    <h6><i class="bi bi-person-circle"></i> Membre 1</h6>
+                                    <p class="text-muted small">Étudiant(e) en Recherche Opérationnelle</p>
+                                </div>
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <div class="team-member">
+                                    <h6><i class="bi bi-person-circle"></i> Membre 2</h6>
+                                    <p class="text-muted small">Étudiant(e) en Recherche Opérationnelle</p>
+                                </div>
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <div class="team-member">
+                                    <h6><i class="bi bi-person-circle"></i> Membre 3</h6>
+                                    <p class="text-muted small">Étudiant(e) en Recherche Opérationnelle</p>
+                                </div>
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <div class="team-member">
+                                    <h6><i class="bi bi-person-circle"></i> Membre 4</h6>
+                                    <p class="text-muted small">Étudiant(e) en Recherche Opérationnelle</p>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="alert alert-info mt-3">
+                            <small>
+                                <i class="bi bi-info-circle"></i> 
+                                <strong>Note :</strong> Les noms des membres de l'équipe doivent être 
+                                remplacés par les vrais noms lors de la présentation du projet.
+                            </small>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Contact / Support -->
+                <div class="card shadow-sm">
+                    <div class="card-header bg-dark text-white">
+                        <h5 class="mb-0"><i class="bi bi-envelope"></i> Contact</h5>
+                    </div>
+                    <div class="card-body">
+                        <p>
+                            Pour toute question ou suggestion concernant cette application, 
+                            veuillez contacter l'équipe du projet ou votre enseignant de 
+                            Recherche Opérationnelle.
+                        </p>
+                        <p class="text-muted small mb-0">
+                            <i class="bi bi-calendar"></i> 
+                            Projet réalisé en 2024 - Cours de Recherche Opérationnelle
+                        </p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Footer -->
+    <footer class="footer bg-dark text-light py-4 mt-5">
+        <div class="container text-center">
+            <p class="mb-0">&copy; 2024 Projet Recherche Opérationnelle - Réseau MPM</p>
+        </div>
+    </footer>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>

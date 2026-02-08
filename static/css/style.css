@@ -1,0 +1,280 @@
+/* Styles personnalisés pour l'application MPM */
+
+:root {
+    --primary-color: #1e40af;
+    --secondary-color: #3b82f6;
+    --success-color: #10b981;
+    --danger-color: #ef4444;
+    --warning-color: #f59e0b;
+    --info-color: #06b6d4;
+    --dark-color: #1f2937;
+    --light-color: #f3f4f6;
+}
+
+body {
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    background-color: #f8fafc;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+}
+
+/* Navigation */
+.navbar {
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.navbar-brand {
+    font-size: 1.3rem;
+    font-weight: 700;
+}
+
+/* Hero Section */
+.hero-section {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    padding: 4rem 0;
+    margin-top: -56px; /* Compenser la navbar */
+    padding-top: 6rem;
+}
+
+.min-vh-75 {
+    min-height: 75vh;
+}
+
+.hero-image {
+    padding: 2rem;
+}
+
+.network-preview {
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 15px;
+    padding: 2rem;
+    backdrop-filter: blur(10px);
+}
+
+.network-svg {
+    width: 100%;
+    height: auto;
+    max-width: 400px;
+}
+
+/* Features Section */
+.features-section {
+    background-color: white;
+}
+
+.feature-card {
+    text-align: center;
+    padding: 2rem;
+    border-radius: 10px;
+    background: white;
+    box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
+    height: 100%;
+}
+
+.feature-card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 8px 12px rgba(0,0,0,0.15);
+}
+
+.feature-icon {
+    font-size: 3rem;
+    margin-bottom: 1rem;
+}
+
+.feature-card h4 {
+    color: var(--primary-color);
+    margin-bottom: 1rem;
+}
+
+/* Cards */
+.card {
+    border: none;
+    border-radius: 10px;
+    transition: box-shadow 0.3s ease;
+}
+
+.card:hover {
+    box-shadow: 0 8px 16px rgba(0,0,0,0.1) !important;
+}
+
+.card-header {
+    border-radius: 10px 10px 0 0 !important;
+    font-weight: 600;
+}
+
+/* Form */
+.form-control:focus {
+    border-color: var(--primary-color);
+    box-shadow: 0 0 0 0.2rem rgba(30, 64, 175, 0.25);
+}
+
+.btn-primary {
+    background-color: var(--primary-color);
+    border-color: var(--primary-color);
+}
+
+.btn-primary:hover {
+    background-color: #1e3a8a;
+    border-color: #1e3a8a;
+}
+
+/* Tasks List */
+.task-item {
+    background-color: var(--light-color);
+    padding: 0.75rem;
+    margin-bottom: 0.5rem;
+    border-radius: 5px;
+    border-left: 4px solid var(--primary-color);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.task-item .task-info {
+    flex: 1;
+}
+
+.task-item .task-name {
+    font-weight: 600;
+    color: var(--primary-color);
+}
+
+.task-item .task-details {
+    font-size: 0.9rem;
+    color: #6b7280;
+}
+
+.task-item .btn-sm {
+    padding: 0.25rem 0.5rem;
+}
+
+/* Table */
+.table {
+    border-radius: 5px;
+    overflow: hidden;
+}
+
+.table thead th {
+    border-bottom: 2px solid var(--primary-color);
+}
+
+.table tbody tr:hover {
+    background-color: #f9fafb;
+}
+
+.critical-task {
+    background-color: #fee2e2 !important;
+    font-weight: 600;
+}
+
+/* Graph Container */
+#graphContainer {
+    background: white;
+    padding: 1rem;
+    border-radius: 5px;
+    border: 1px solid #e5e7eb;
+}
+
+#mpmGraph {
+    max-width: 100%;
+    height: auto;
+    border-radius: 5px;
+}
+
+/* Loading */
+.spinner-border {
+    width: 3rem;
+    height: 3rem;
+}
+
+/* Footer */
+.footer {
+    margin-top: auto;
+    background-color: var(--dark-color) !important;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+    .hero-section {
+        padding: 2rem 0;
+        padding-top: 4rem;
+    }
+    
+    .display-4 {
+        font-size: 2rem;
+    }
+    
+    .feature-card {
+        margin-bottom: 1.5rem;
+    }
+    
+    .network-preview {
+        margin-top: 2rem;
+    }
+}
+
+/* Animations */
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(20px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.fade-in {
+    animation: fadeIn 0.5s ease-in;
+}
+
+/* Badge */
+.badge {
+    padding: 0.35em 0.65em;
+    font-size: 0.875em;
+}
+
+/* Alert */
+.alert {
+    border-radius: 8px;
+    border: none;
+}
+
+/* Team Members */
+.team-member {
+    padding: 1rem;
+    background-color: var(--light-color);
+    border-radius: 8px;
+    border-left: 3px solid var(--primary-color);
+}
+
+/* Utilities */
+.text-primary {
+    color: var(--primary-color) !important;
+}
+
+.bg-primary {
+    background-color: var(--primary-color) !important;
+}
+
+/* Scrollbar */
+::-webkit-scrollbar {
+    width: 10px;
+}
+
+::-webkit-scrollbar-track {
+    background: #f1f1f1;
+}
+
+::-webkit-scrollbar-thumb {
+    background: var(--primary-color);
+    border-radius: 5px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+    background: #1e3a8a;
+}
