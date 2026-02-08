@@ -7,9 +7,11 @@ import matplotlib
 matplotlib.use("Agg")  # Backend non-interactif pour Flask - DOIT être avant tout import matplotlib.pyplot
 import matplotlib.pyplot as plt
 import matplotlib.patches as mpatches
+from matplotlib.patches import FancyBboxPatch, FancyArrowPatch
 import networkx as nx
 import os
 from datetime import datetime
+import math
 
 
 class MPMVisualizer:
@@ -30,6 +32,7 @@ class MPMVisualizer:
         self.dpl = results['dpl']
         self.marges = results['marges']
         self.critical_path = set(results['critical_path'])
+        self.project_duration = results['project_duration']
         self.graph = nx.DiGraph()
     
     def generate_graph(self, output_dir='static/temp'):
@@ -58,8 +61,11 @@ class MPMVisualizer:
     
     def _build_graph(self):
         """
-        Construit le graphe NetworkX à partir des tâches
+        Construit le graphe NetworkX à partir des tâches avec nœuds Début et Fin
         """
+        # Ajouter le nœud Début
+        self.graph.add_node('Début', duration=0, dpt=0, dpl=0, marge=0, is_critical=True, is_special=True)
+        
         # Ajouter les nœuds (tâches)
         for task in self.tasks:
             task_name = task['name']
@@ -69,8 +75,38 @@ class MPMVisualizer:
                 dpt=self.dpt[task_name],
                 dpl=self.dpl[task_name],
                 marge=self.marges[task_name],
-                is_critical=task_name in self.critical_path
+                is_critical=task_name in self.critical_path,
+                is_special=False
             )
+        
+        # Ajouter le nœud Fin
+        self.graph.add_node('Fin', duration=0, dpt=self.project_duration, 
+                           dpl=self.project_duration, marge=0, is_critical=True, is_special=True)
+        
+        # Trouver les tâches sans antériorités (connectées à Début)
+        tasks_without_pred = []
+        tasks_without_succ = []
+        
+        all_predecessors = set()
+        for task in self.tasks:
+            predecessors = task.get('predecessors', [])
+            if not predecessors:
+                tasks_without_pred.append(task['name'])
+            all_predecessors.update(predecessors)
+        
+        # Trouver les tâches sans successeurs (connectées à Fin)
+        all_task_names = {task['name'] for task in self.tasks}
+        for task in self.tasks:
+            task_name = task['name']
+            # Vérifier si cette tâche n'est antériorité d'aucune autre
+            is_successor = any(task_name in t.get('predecessors', []) for t in self.tasks)
+            if not is_successor:
+                tasks_without_succ.append(task_name)
+        
+        # Connecter Début aux tâches sans antériorités
+        for task_name in tasks_without_pred:
+            is_critical = task_name in self.critical_path
+            self.graph.add_edge('Début', task_name, critical=is_critical)
         
         # Ajouter les arêtes (antériorités)
         for task in self.tasks:
@@ -83,6 +119,11 @@ class MPMVisualizer:
                     pred in self.critical_path
                 )
                 self.graph.add_edge(pred, task_name, critical=is_critical_edge)
+        
+        # Connecter les tâches sans successeurs à Fin
+        for task_name in tasks_without_succ:
+            is_critical = task_name in self.critical_path
+            self.graph.add_edge(task_name, 'Fin', critical=is_critical)
     
     def _draw_graph(self, filepath):
         """
@@ -91,63 +132,111 @@ class MPMVisualizer:
         Args:
             filepath: Chemin où sauvegarder l'image
         """
-        # Configuration de la figure
-        plt.figure(figsize=(16, 10))
-        plt.axis('off')
+        # Configuration de la figure avec taille adaptative
+        # Calculer la taille nécessaire basée sur le nombre de nœuds
+        num_nodes = len(self.graph.nodes())
+        num_levels = min(20, int(math.ceil(self.project_duration)) + 2)
         
-        # Positionnement des nœuds avec un layout hiérarchique
+        # Limiter la taille de la figure pour éviter les images trop grandes
+        fig_width = min(20, max(12, num_levels * 1.5))
+        fig_height = min(14, max(8, num_nodes * 0.8))
+        
+        fig, ax = plt.subplots(figsize=(fig_width, fig_height))
+        ax.axis('off')
+        
+        # Définir les limites de l'axe pour contrôler la taille
+        ax.set_xlim(-1, num_levels * 2.5)
+        ax.set_ylim(-num_nodes * 0.8, num_nodes * 0.8)
+        
+        # Positionnement des nœuds avec un layout hiérarchique de gauche à droite
         pos = self._hierarchical_layout()
         
         # Dessiner les arêtes
-        self._draw_edges(pos)
+        self._draw_edges(ax, pos)
         
         # Dessiner les nœuds
-        self._draw_nodes(pos)
+        self._draw_nodes(ax, pos)
         
         # Ajouter une légende
-        self._add_legend()
+        self._add_legend(ax)
         
         # Titre
-        plt.title('Réseau MPM - Méthode des Potentiels Métra', 
-                 fontsize=16, fontweight='bold', pad=20)
+        plt.title('Graphe MPM d\'un projet', 
+                 fontsize=18, fontweight='bold', pad=20)
         
-        # Sauvegarder
-        plt.tight_layout()
+        # Sauvegarder (sans tight_layout pour éviter le warning)
+        try:
+            plt.tight_layout()
+        except:
+            pass  # Ignorer le warning si tight_layout échoue
+        
         plt.savefig(filepath, dpi=300, bbox_inches='tight', 
-                   facecolor='white', edgecolor='none')
+                   facecolor='white', edgecolor='none', pad_inches=0.2)
         plt.close()
     
     def _hierarchical_layout(self):
         """
-        Génère un positionnement hiérarchique des nœuds basé sur les DPT
+        Génère un positionnement hiérarchique des nœuds de gauche à droite basé sur les DPT
         """
-        # Grouper les tâches par niveau (basé sur DPT)
+        # Normaliser les DPT pour créer des niveaux compacts
+        all_dpt_values = [self.dpt[node] for node in self.graph.nodes() if node in self.dpt and node not in ['Début', 'Fin']]
+        
+        if not all_dpt_values:
+            # Cas simple : utiliser un layout basique
+            pos = {}
+            nodes_list = list(self.graph.nodes())
+            for i, node in enumerate(nodes_list):
+                pos[node] = (i * 2, 0)
+            return pos
+        
+        min_dpt = min(all_dpt_values) if all_dpt_values else 0
+        max_dpt = max(all_dpt_values) if all_dpt_values else self.project_duration
+        
+        # Créer des niveaux normalisés (max 20 niveaux pour éviter les images trop grandes)
+        num_levels = min(20, int(math.ceil(self.project_duration)) + 2)
+        level_size = (max_dpt - min_dpt) / max(1, num_levels - 2) if num_levels > 2 else 1
+        
+        # Calculer les niveaux basés sur les DPT normalisés
         levels = {}
-        for task_name in self.graph.nodes():
-            dpt = self.dpt[task_name]
-            level = int(dpt)  # Niveau approximatif basé sur DPT
+        for node in self.graph.nodes():
+            if node == 'Début':
+                level = 0
+            elif node == 'Fin':
+                level = num_levels - 1
+            else:
+                # Vérifier que le nœud existe dans dpt
+                if node in self.dpt:
+                    dpt = self.dpt[node]
+                    # Normaliser le niveau (entre 1 et num_levels-2)
+                    normalized = (dpt - min_dpt) / max(1, level_size) if level_size > 0 else 0
+                    level = min(int(normalized) + 1, num_levels - 2)
+                else:
+                    level = 1  # Niveau par défaut
+            
             if level not in levels:
                 levels[level] = []
-            levels[level].append(task_name)
+            levels[level].append(node)
         
-        # Positionner les nœuds
+        # Positionner les nœuds de gauche à droite avec espacement contrôlé
         pos = {}
         max_nodes_per_level = max(len(nodes) for nodes in levels.values()) if levels else 1
         
-        for level, nodes in sorted(levels.items()):
-            y = -level * 2  # Espacement vertical
-            x_spacing = max(3, 12 / max(len(nodes), 1))
-            start_x = -(len(nodes) - 1) * x_spacing / 2
-            
-            for i, node in enumerate(nodes):
-                pos[node] = (start_x + i * x_spacing, y)
+        # Espacement horizontal réduit pour éviter les images trop grandes
+        x_spacing = 2.0  # Espacement entre les niveaux
+        y_spacing = 1.5  # Espacement vertical entre nœuds
         
-        # Ajuster avec spring layout pour améliorer la lisibilité
-        pos = nx.spring_layout(self.graph, pos=pos, k=2, iterations=50)
+        for level, nodes in sorted(levels.items()):
+            x = level * x_spacing
+            if len(nodes) == 1:
+                pos[nodes[0]] = (x, 0)
+            else:
+                start_y = -(len(nodes) - 1) * y_spacing / 2
+                for i, node in enumerate(nodes):
+                    pos[node] = (x, start_y + i * y_spacing)
         
         return pos
     
-    def _draw_edges(self, pos):
+    def _draw_edges(self, ax, pos):
         """
         Dessine les arêtes du graphe
         """
@@ -156,95 +245,119 @@ class MPMVisualizer:
             (u, v) for u, v, d in self.graph.edges(data=True) 
             if d.get('critical', False)
         ]
-        nx.draw_networkx_edges(
-            self.graph, pos, 
-            edgelist=critical_edges,
-            edge_color='red',
-            width=3,
-            alpha=0.7,
-            arrows=True,
-            arrowsize=20,
-            arrowstyle='->',
-            connectionstyle='arc3,rad=0.1'
-        )
         
-        # Arêtes non critiques (gris)
+        for u, v in critical_edges:
+            x1, y1 = pos[u]
+            x2, y2 = pos[v]
+            arrow = FancyArrowPatch((x1, y1), (x2, y2),
+                                  arrowstyle='->', mutation_scale=25,
+                                  color='red', linewidth=2.5, zorder=1)
+            ax.add_patch(arrow)
+        
+        # Arêtes non critiques (noir)
         non_critical_edges = [
             (u, v) for u, v, d in self.graph.edges(data=True) 
             if not d.get('critical', False)
         ]
-        nx.draw_networkx_edges(
-            self.graph, pos,
-            edgelist=non_critical_edges,
-            edge_color='gray',
-            width=1.5,
-            alpha=0.5,
-            arrows=True,
-            arrowsize=15,
-            arrowstyle='->',
-            connectionstyle='arc3,rad=0.1'
-        )
+        
+        for u, v in non_critical_edges:
+            x1, y1 = pos[u]
+            x2, y2 = pos[v]
+            arrow = FancyArrowPatch((x1, y1), (x2, y2),
+                                  arrowstyle='->', mutation_scale=20,
+                                  color='black', linewidth=1.5, zorder=1, alpha=0.6)
+            ax.add_patch(arrow)
     
-    def _draw_nodes(self, pos):
+    def _draw_nodes(self, ax, pos):
         """
-        Dessine les nœuds du graphe avec leurs informations
+        Dessine les nœuds du graphe avec leurs informations formatées
         """
-        # Nœuds critiques (rouge)
-        critical_nodes = [n for n in self.graph.nodes() if n in self.critical_path]
-        nx.draw_networkx_nodes(
-            self.graph, pos,
-            nodelist=critical_nodes,
-            node_color='#ff6b6b',
-            node_size=2000,
-            node_shape='s',
-            alpha=0.9,
-            edgecolors='darkred',
-            linewidths=2
-        )
-        
-        # Nœuds non critiques (bleu)
-        non_critical_nodes = [n for n in self.graph.nodes() if n not in self.critical_path]
-        nx.draw_networkx_nodes(
-            self.graph, pos,
-            nodelist=non_critical_nodes,
-            node_color='#4dabf7',
-            node_size=2000,
-            node_shape='s',
-            alpha=0.7,
-            edgecolors='darkblue',
-            linewidths=2
-        )
-        
-        # Labels des nœuds avec informations MPM
-        labels = {}
         for node in self.graph.nodes():
+            x, y = pos[node]
             data = self.graph.nodes[node]
-            duration = data['duration']
-            dpt = data['dpt']
-            dpl = data['dpl']
-            marge = data['marge']
+            duration = data.get('duration', 0)
+            dpt = data.get('dpt', 0)
+            dpl = data.get('dpl', 0)
+            is_critical = data.get('is_critical', False)
+            is_special = data.get('is_special', False)
             
-            # Format du label
-            label = f"{node}\nDurée: {duration}\nDPT: {dpt:.1f} | DPL: {dpl:.1f}\nMarge: {marge:.1f}"
-            labels[node] = label
-        
-        nx.draw_networkx_labels(
-            self.graph, pos, labels,
-            font_size=8,
-            font_weight='bold',
-            font_color='white'
-        )
+            # Couleur selon le type
+            if is_special:
+                # Nœuds Début/Fin en violet
+                facecolor = '#9b59b6'
+                edgecolor = '#6c3483'
+            elif is_critical:
+                # Nœuds critiques en rouge
+                facecolor = '#e74c3c'
+                edgecolor = '#c0392b'
+            else:
+                # Nœuds non critiques en bleu
+                facecolor = '#3498db'
+                edgecolor = '#2980b9'
+            
+            # Taille du nœud
+            width = 1.2
+            height = 0.8
+            
+            # Dessiner le rectangle
+            box = FancyBboxPatch((x - width/2, y - height/2), width, height,
+                              boxstyle="round,pad=0.1", 
+                              facecolor=facecolor, edgecolor=edgecolor,
+                              linewidth=2, zorder=2)
+            ax.add_patch(box)
+            
+            # Texte formaté comme dans le modèle
+            if is_special:
+                # Pour Début/Fin : juste le nom en haut
+                ax.text(x, y + 0.15, node, ha='center', va='center',
+                       fontsize=11, fontweight='bold', color='white', zorder=3)
+                # Dates en bas
+                ax.text(x - 0.4, y - 0.2, f'{dpt:.0f}', ha='left', va='center',
+                       fontsize=9, color='white', zorder=3)
+                ax.text(x + 0.4, y - 0.2, f'{dpl:.0f}', ha='right', va='center',
+                       fontsize=9, color='white', zorder=3)
+            else:
+                # Nom de la tâche en haut à gauche
+                ax.text(x - 0.5, y + 0.25, node, ha='left', va='center',
+                       fontsize=10, fontweight='bold', color='white', zorder=3)
+                # Durée en haut à droite
+                ax.text(x + 0.5, y + 0.25, f'{duration:.0f}', ha='right', va='center',
+                       fontsize=9, color='white', zorder=3)
+                # DPT en bas à gauche
+                ax.text(x - 0.5, y - 0.25, f'{dpt:.0f}', ha='left', va='center',
+                       fontsize=9, color='white', zorder=3)
+                # DPL en bas à droite
+                ax.text(x + 0.5, y - 0.25, f'{dpl:.0f}', ha='right', va='center',
+                       fontsize=9, color='white', zorder=3)
     
-    def _add_legend(self):
+    def _add_legend(self, ax):
         """
-        Ajoute une légende au graphe
+        Ajoute une légende au graphe avec explication des éléments
         """
-        critical_patch = mpatches.Patch(color='#ff6b6b', label='Tâche critique')
-        non_critical_patch = mpatches.Patch(color='#4dabf7', label='Tâche non critique')
+        # Légende des lignes
+        legend_elements = [
+            mpatches.Patch(color='red', label='Chemin critique'),
+            mpatches.Patch(color='black', label='Relation de dépendance')
+        ]
         
-        plt.legend(
-            handles=[critical_patch, non_critical_patch],
-            loc='upper right',
-            fontsize=10,
-            framealpha=0.9
+        legend1 = ax.legend(handles=legend_elements, loc='upper left', 
+                           fontsize=11, framealpha=0.95, title='Légende')
+        legend1.get_title().set_fontweight('bold')
+        
+        # Explication de la structure des nœuds (dans un encadré)
+        explanation_text = (
+            "Structure d'un nœud :\n"
+            "• Nom de la tâche (haut gauche)\n"
+            "• Durée (haut droite)\n"
+            "• Date au plus tôt (bas gauche)\n"
+            "• Date au plus tard (bas droite)"
         )
+        
+        # Encadré d'explication
+        text_box = ax.text(0.98, 0.02, explanation_text, 
+                          transform=ax.transAxes,
+                          fontsize=9,
+                          verticalalignment='bottom',
+                          horizontalalignment='right',
+                          bbox=dict(boxstyle='round', facecolor='wheat', alpha=0.8),
+                          zorder=10)

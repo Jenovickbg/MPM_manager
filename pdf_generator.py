@@ -7,6 +7,7 @@ import matplotlib
 matplotlib.use("Agg")  # Backend non-interactif pour Flask - DOIT être avant tout import matplotlib.pyplot
 import matplotlib.pyplot as plt
 import matplotlib.patches as mpatches
+from matplotlib.patches import FancyBboxPatch, FancyArrowPatch
 from reportlab.lib import colors
 from reportlab.lib.pagesizes import A4, landscape
 from reportlab.lib.units import cm
@@ -17,6 +18,7 @@ import os
 from datetime import datetime
 import networkx as nx
 from io import BytesIO
+import math
 
 
 class PDFGenerator:
@@ -178,13 +180,16 @@ class PDFGenerator:
     
     def _generate_graph_image(self):
         """
-        Génère une image du graphe MPM pour le PDF
+        Génère une image du graphe MPM pour le PDF avec le même style que le visualiseur principal
         """
         try:
-            # Construire le graphe
+            # Construire le graphe avec nœuds Début et Fin
             G = nx.DiGraph()
             
-            # Ajouter les nœuds
+            # Ajouter le nœud Début
+            G.add_node('Début', duration=0, dpt=0, dpl=0, is_critical=True, is_special=True)
+            
+            # Ajouter les nœuds (tâches)
             for task in self.tasks:
                 task_name = task['name']
                 G.add_node(
@@ -192,10 +197,36 @@ class PDFGenerator:
                     duration=float(task['duration']),
                     dpt=self.dpt[task_name],
                     dpl=self.dpl[task_name],
-                    is_critical=task_name in self.critical_path
+                    is_critical=task_name in self.critical_path,
+                    is_special=False
                 )
             
-            # Ajouter les arêtes
+            # Ajouter le nœud Fin
+            G.add_node('Fin', duration=0, dpt=self.project_duration, 
+                      dpl=self.project_duration, is_critical=True, is_special=True)
+            
+            # Trouver les tâches sans antériorités et sans successeurs
+            tasks_without_pred = []
+            tasks_without_succ = []
+            
+            for task in self.tasks:
+                predecessors = task.get('predecessors', [])
+                if not predecessors:
+                    tasks_without_pred.append(task['name'])
+            
+            all_task_names = {task['name'] for task in self.tasks}
+            for task in self.tasks:
+                task_name = task['name']
+                is_successor = any(task_name in t.get('predecessors', []) for t in self.tasks)
+                if not is_successor:
+                    tasks_without_succ.append(task_name)
+            
+            # Connecter Début aux tâches sans antériorités
+            for task_name in tasks_without_pred:
+                is_critical = task_name in self.critical_path
+                G.add_edge('Début', task_name, critical=is_critical)
+            
+            # Ajouter les arêtes (antériorités)
             for task in self.tasks:
                 task_name = task['name']
                 predecessors = task.get('predecessors', [])
@@ -206,51 +237,171 @@ class PDFGenerator:
                     )
                     G.add_edge(pred, task_name, critical=is_critical_edge)
             
-            # Créer la figure
-            fig, ax = plt.subplots(figsize=(14, 8))
+            # Connecter les tâches sans successeurs à Fin
+            for task_name in tasks_without_succ:
+                is_critical = task_name in self.critical_path
+                G.add_edge(task_name, 'Fin', critical=is_critical)
+            
+            # Calculer le layout hiérarchique
+            pos = self._hierarchical_layout_pdf(G)
+            
+            # Créer la figure avec taille adaptative
+            num_nodes = len(G.nodes())
+            num_levels = min(15, int(math.ceil(self.project_duration)) + 2)
+            fig_width = min(16, max(10, num_levels * 1.2))
+            fig_height = min(10, max(6, num_nodes * 0.6))
+            
+            fig, ax = plt.subplots(figsize=(fig_width, fig_height))
             ax.axis('off')
             
-            # Positionnement
-            pos = nx.spring_layout(G, k=2, iterations=50)
+            # Définir les limites pour contrôler la taille
+            ax.set_xlim(-1, num_levels * 2.2)
+            ax.set_ylim(-num_nodes * 0.6, num_nodes * 0.6)
             
             # Dessiner les arêtes
             critical_edges = [(u, v) for u, v, d in G.edges(data=True) if d.get('critical', False)]
             non_critical_edges = [(u, v) for u, v, d in G.edges(data=True) if not d.get('critical', False)]
             
-            nx.draw_networkx_edges(G, pos, edgelist=critical_edges, edge_color='red', 
-                                  width=2, alpha=0.7, arrows=True, arrowsize=15, ax=ax)
-            nx.draw_networkx_edges(G, pos, edgelist=non_critical_edges, edge_color='gray', 
-                                  width=1, alpha=0.5, arrows=True, arrowsize=12, ax=ax)
+            for u, v in critical_edges:
+                x1, y1 = pos[u]
+                x2, y2 = pos[v]
+                arrow = FancyArrowPatch((x1, y1), (x2, y2),
+                                      arrowstyle='->', mutation_scale=20,
+                                      color='red', linewidth=2, zorder=1)
+                ax.add_patch(arrow)
             
-            # Dessiner les nœuds
-            critical_nodes = [n for n in G.nodes() if n in self.critical_path]
-            non_critical_nodes = [n for n in G.nodes() if n not in self.critical_path]
+            for u, v in non_critical_edges:
+                x1, y1 = pos[u]
+                x2, y2 = pos[v]
+                arrow = FancyArrowPatch((x1, y1), (x2, y2),
+                                      arrowstyle='->', mutation_scale=15,
+                                      color='black', linewidth=1.2, zorder=1, alpha=0.6)
+                ax.add_patch(arrow)
             
-            nx.draw_networkx_nodes(G, pos, nodelist=critical_nodes, node_color='#ff6b6b',
-                                   node_size=1500, node_shape='s', alpha=0.9, ax=ax)
-            nx.draw_networkx_nodes(G, pos, nodelist=non_critical_nodes, node_color='#4dabf7',
-                                  node_size=1500, node_shape='s', alpha=0.7, ax=ax)
+            # Dessiner les nœuds avec le même style que le visualiseur principal
+            for node in G.nodes():
+                x, y = pos[node]
+                data = G.nodes[node]
+                duration = data.get('duration', 0)
+                dpt = data.get('dpt', 0)
+                dpl = data.get('dpl', 0)
+                is_critical = data.get('is_critical', False)
+                is_special = data.get('is_special', False)
+                
+                # Couleur selon le type
+                if is_special:
+                    facecolor = '#9b59b6'
+                    edgecolor = '#6c3483'
+                elif is_critical:
+                    facecolor = '#e74c3c'
+                    edgecolor = '#c0392b'
+                else:
+                    facecolor = '#3498db'
+                    edgecolor = '#2980b9'
+                
+                # Taille du nœud (légèrement réduite pour le PDF)
+                width = 0.9
+                height = 0.6
+                
+                # Dessiner le rectangle
+                box = FancyBboxPatch((x - width/2, y - height/2), width, height,
+                                  boxstyle="round,pad=0.08", 
+                                  facecolor=facecolor, edgecolor=edgecolor,
+                                  linewidth=1.5, zorder=2)
+                ax.add_patch(box)
+                
+                # Texte formaté
+                if is_special:
+                    ax.text(x, y + 0.1, node, ha='center', va='center',
+                           fontsize=9, fontweight='bold', color='white', zorder=3)
+                    ax.text(x - 0.3, y - 0.15, f'{dpt:.0f}', ha='left', va='center',
+                           fontsize=7, color='white', zorder=3)
+                    ax.text(x + 0.3, y - 0.15, f'{dpl:.0f}', ha='right', va='center',
+                           fontsize=7, color='white', zorder=3)
+                else:
+                    ax.text(x - 0.4, y + 0.2, node, ha='left', va='center',
+                           fontsize=8, fontweight='bold', color='white', zorder=3)
+                    ax.text(x + 0.4, y + 0.2, f'{duration:.0f}', ha='right', va='center',
+                           fontsize=7, color='white', zorder=3)
+                    ax.text(x - 0.4, y - 0.2, f'{dpt:.0f}', ha='left', va='center',
+                           fontsize=7, color='white', zorder=3)
+                    ax.text(x + 0.4, y - 0.2, f'{dpl:.0f}', ha='right', va='center',
+                           fontsize=7, color='white', zorder=3)
             
-            # Labels simplifiés
-            labels = {node: f"{node}\n{self.dpt[node]:.1f}|{self.dpl[node]:.1f}" 
-                     for node in G.nodes()}
-            nx.draw_networkx_labels(G, pos, labels, font_size=8, font_weight='bold', 
-                                   font_color='white', ax=ax)
+            plt.title('Graphe MPM d\'un projet', fontsize=12, fontweight='bold', pad=10)
             
-            plt.title('Réseau MPM', fontsize=14, fontweight='bold', pad=10)
-            plt.tight_layout()
+            try:
+                plt.tight_layout()
+            except:
+                pass
             
             # Sauvegarder dans un buffer
             img_buffer = BytesIO()
             plt.savefig(img_buffer, format='png', dpi=150, bbox_inches='tight', 
-                       facecolor='white', edgecolor='none')
+                       facecolor='white', edgecolor='none', pad_inches=0.2)
             plt.close()
             
             img_buffer.seek(0)
-            img = Image(img_buffer, width=16*cm, height=9*cm)
+            img = Image(img_buffer, width=16*cm, height=10*cm)
             
             return img
             
         except Exception as e:
-            print(f"Erreur lors de la génération du graphe: {e}")
+            import traceback
+            print(f"Erreur lors de la génération du graphe PDF: {e}")
+            print(traceback.format_exc())
             return None
+    
+    def _hierarchical_layout_pdf(self, G):
+        """
+        Génère un positionnement hiérarchique pour le PDF (similaire au visualiseur principal)
+        """
+        # Normaliser les DPT
+        all_dpt_values = [G.nodes[node].get('dpt', 0) for node in G.nodes() 
+                         if node not in ['Début', 'Fin'] and 'dpt' in G.nodes[node]]
+        
+        if not all_dpt_values:
+            pos = {}
+            nodes_list = list(G.nodes())
+            for i, node in enumerate(nodes_list):
+                pos[node] = (i * 1.5, 0)
+            return pos
+        
+        min_dpt = min(all_dpt_values) if all_dpt_values else 0
+        max_dpt = max(all_dpt_values) if all_dpt_values else self.project_duration
+        
+        num_levels = min(15, int(math.ceil(self.project_duration)) + 2)
+        level_size = (max_dpt - min_dpt) / max(1, num_levels - 2) if num_levels > 2 else 1
+        
+        levels = {}
+        for node in G.nodes():
+            if node == 'Début':
+                level = 0
+            elif node == 'Fin':
+                level = num_levels - 1
+            else:
+                if 'dpt' in G.nodes[node]:
+                    dpt = G.nodes[node]['dpt']
+                    normalized = (dpt - min_dpt) / max(1, level_size) if level_size > 0 else 0
+                    level = min(int(normalized) + 1, num_levels - 2)
+                else:
+                    level = 1
+            
+            if level not in levels:
+                levels[level] = []
+            levels[level].append(node)
+        
+        pos = {}
+        x_spacing = 1.5
+        y_spacing = 1.0
+        
+        for level, nodes in sorted(levels.items()):
+            x = level * x_spacing
+            if len(nodes) == 1:
+                pos[nodes[0]] = (x, 0)
+            else:
+                start_y = -(len(nodes) - 1) * y_spacing / 2
+                for i, node in enumerate(nodes):
+                    pos[node] = (x, start_y + i * y_spacing)
+        
+        return pos

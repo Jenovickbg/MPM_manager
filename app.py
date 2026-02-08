@@ -70,6 +70,9 @@ def calculate_mpm():
         })
     
     except Exception as e:
+        import traceback
+        error_details = traceback.format_exc()
+        print(f"Erreur détaillée: {error_details}")  # Pour le debug
         return jsonify({'error': f'Erreur lors du calcul: {str(e)}'}), 500
 
 
