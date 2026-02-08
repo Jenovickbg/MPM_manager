@@ -3,6 +3,8 @@ Module de visualisation du réseau MPM
 Génère un graphe visuel du réseau MPM avec NetworkX et Matplotlib
 """
 
+import matplotlib
+matplotlib.use('Agg')  # Backend non-interactif pour Flask
 import networkx as nx
 import matplotlib.pyplot as plt
 import matplotlib.patches as mpatches

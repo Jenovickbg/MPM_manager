@@ -3,6 +3,8 @@ Module de génération de PDF pour le réseau MPM
 Génère un PDF avec le graphe, le tableau récapitulatif et les informations du projet
 """
 
+import matplotlib
+matplotlib.use('Agg')  # Backend non-interactif pour Flask
 from reportlab.lib import colors
 from reportlab.lib.pagesizes import A4, landscape
 from reportlab.lib.units import cm
