@@ -175,5 +175,10 @@ def has_cycle(tasks):
     return False
 
 
+# Configuration pour le développement local
+# Sur Render/Heroku, l'application est lancée via Gunicorn (voir Procfile)
 if __name__ == '__main__':
-    app.run(debug=True, host='0.0.0.0', port=5000)
+    # Détecter si on est en production (variable d'environnement)
+    debug_mode = os.environ.get('FLASK_ENV') != 'production'
+    port = int(os.environ.get('PORT', 5000))
+    app.run(debug=debug_mode, host='0.0.0.0', port=port)

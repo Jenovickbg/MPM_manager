@@ -151,19 +151,46 @@ pip install -r requirements.txt
 ```
 
 ### Erreur de port déjà utilisé
-Changez le port dans `app.py` :
+Le port est maintenant configuré automatiquement via la variable d'environnement `PORT`.
+Pour le développement local, vous pouvez modifier la ligne dans `app.py` :
 ```python
-app.run(debug=True, host='0.0.0.0', port=5001)
+port = int(os.environ.get('PORT', 5001))  # Changez 5001 par le port souhaité
 ```
 
 ### Problème de génération de graphe
 Vérifiez que le dossier `static/temp` existe et est accessible en écriture.
+
+## 🌐 Déploiement sur Render/Heroku
+
+### Configuration pour le déploiement
+
+L'application est déjà configurée pour être déployée sur Render, Heroku ou d'autres plateformes similaires.
+
+**Important :**
+- Le `Procfile` est déjà configuré pour utiliser Gunicorn
+- Le mode debug est automatiquement désactivé en production
+- Le port est configuré via la variable d'environnement `PORT`
+
+### Variables d'environnement (optionnelles)
+
+- `FLASK_ENV=production` : Désactive le mode debug
+- `PORT` : Port d'écoute (défini automatiquement par la plateforme)
+
+### Étapes de déploiement sur Render
+
+1. Créer un nouveau service Web sur Render
+2. Connecter votre dépôt Git
+3. Configurations :
+   - **Build Command** : `pip install -r requirements.txt`
+   - **Start Command** : `gunicorn app:app` (ou laisser vide, le Procfile sera utilisé)
+4. Déployer
 
 ## 📝 Notes
 
 - Les fichiers temporaires (graphes, PDFs) sont stockés dans `static/temp/`
 - Les tâches sont sauvegardées automatiquement dans le localStorage du navigateur
 - Le graphe est généré avec une résolution de 300 DPI pour une qualité optimale
+- En production, le mode debug est automatiquement désactivé
 
 ## 👥 Équipe
 
